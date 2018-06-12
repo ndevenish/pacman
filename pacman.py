@@ -37,14 +37,22 @@ def det_dist_file_scrape(fid, shot_order_addr_list):
     
     det_dict = {} 
     f = open(fid)
+    multi = 0
     for line in f.readlines():
         entry = line.split()
         img_num = int(entry[0])
-        val = float(entry[1])
+        #try:
+        #   x = det_dict[img_num]
+        #   multi +=1
+        #except:
+        if entry[1] == 'None':
+           val = None
+        else:
+           val = float(entry[1])
         if val == 0:
             val = None
         det_dict[img_num] = val
-    
+    print multi
     hits_dict = {}
     for i in range(len(shot_order_addr_list)):
         addr = shot_order_addr_list[i]
@@ -233,11 +241,12 @@ def plot(x, y, z, *args):
                 a_list.append(entry)
         z = np.array(a_list)
 
-    plt.scatter(x, y, c=z, s=mrksz, marker='s', alpha=alfa, cmap=cmap_choice)
+    #plt.scatter(x, y, c=z, s=mrksz, marker='s',vmin=95, vmax=98.5, alpha=alfa, cmap=cmap_choice)
+    plt.scatter(x, y, c=z, s=mrksz, marker='s',vmin=zlim_min, vmax=zlim_max, alpha=alfa, cmap=cmap_choice)
 
     ax1.invert_yaxis()
     cb = plt.colorbar()
-    path = '/dls_sw/i24/scripts/pacman-pictures/'
+    path = '.'
     plt.savefig(path+out_fid, dpi=pixels, facecolor='0.15', bbox_inches='tight', pad_inches=0, transparent=True)
     print '\n\nPLOTTING KEYWORDS\n', 30*'-'
     print 'col=%s'     %col
@@ -339,7 +348,7 @@ def main(*args):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print '\n\t\t\t\tPACMAN'
+        print '\n\t\t\t--PACMAN'
         print './pacman.py file=/path/to/your/Filename.out'
         #print './pacman.py dir=YourDirectoryHere wild=yourwildcard\n'
         print "\t\t\t\tEXAMPLE\n./pacman.py file=egbert_spots.out col=3 ms=8 cmap='terrain' xlim=0,25 ylim=0,25\n"
