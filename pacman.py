@@ -96,7 +96,6 @@ def run_fromdir_method(*args):
             path = v
             print("\n\n\nThis is the path:", path)
         elif k.startswith("wild"):
-            wild = str(v)
             print("This is the wild:", path)
 
     addr_list = get_shot_order(chip_type="1")
@@ -271,7 +270,7 @@ def plot(x, y, z, *args):
     )
 
     ax1.invert_yaxis()
-    cb = plt.colorbar()
+    plt.colorbar()
     path = "."
     plt.savefig(
         path + out_fid,
@@ -390,7 +389,7 @@ def main(*args):
     elif method == "fromdir":
         x, y, z = run_fromdir_method(*args)
     elif method == "dosecolumns":
-        something = run_dosecolumns(*args)
+        run_dosecolumns(*args)
         print("Exiting")
         return 0
     else:

@@ -1,13 +1,9 @@
 #!/usr/bin/python
 from __future__ import absolute_import, print_function
 
-import math
 import os
-import re
 import string
-import sys
 import time
-from time import sleep
 
 import numpy as np
 from six.moves import range, zip
@@ -315,7 +311,7 @@ def get_xy(addr, chip_type):
 
 
 def pathli(l=[], way="typewriter", reverse=False):
-    if reverse == True:
+    if reverse:
         li = list(reversed(l))
     else:
         li = list(l)
@@ -514,9 +510,7 @@ def check_files(location, suffix_list):
         print("Unknown location in write_file")
     chip_file_path = a_directory + "chips/" + sub_dir + "/" + chip_name
 
-    try:
-        os.stat(chip_file_path)
-    except:
+    if not os.path.exists(chip_file_path):
         os.makedirs(chip_file_path)
     for suffix in suffix_list:
         full_fid = chip_file_path + suffix
