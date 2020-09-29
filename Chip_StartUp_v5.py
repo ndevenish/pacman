@@ -61,10 +61,10 @@ def scrape_parameter_file(location=None):
 def fiducials(chip_type):
     if chip_type == "0":
         corners_list = []
-        for R in string.letters[26:35]:
+        for R in string.ascii_letters[26:35]:
             for C in [str(num) for num in range(1, 10)]:
-                for r in string.letters[:12]:
-                    for c in string.letters[:12]:
+                for r in string.ascii_letters[:12]:
+                    for c in string.ascii_letters[:12]:
                         addr = "_".join([R + C, r + c])
                         if r + c in ["aa", "la", "ll"]:
                             corners_list.append(addr)
@@ -289,7 +289,7 @@ def get_xy(addr, chip_type):
     entry = addr.split("_")[-2:]
     R, C = entry[0][0], entry[0][1]
     r2, c2 = entry[1][0], entry[1][1]
-    blockR = string.uppercase.index(R)
+    blockR = string.ascii_uppercase.index(R)
     blockC = int(C) - 1
     lowercase_list = list(string.ascii_lowercase + string.ascii_uppercase + "0")
     windowR = lowercase_list.index(r2)
