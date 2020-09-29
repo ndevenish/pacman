@@ -10,7 +10,9 @@ Methods:
 
 Additional options can be passed:
     binding=[alpha|shot]    Binding type, if appropriate
-    column=3                Which column from the input file to read [default: 3]
+    column=3                Which column from the input file to read. Accepts
+                            numbers (for columnar .out files) or names (for new
+                            json-style files) [default: 3 or total_intensity]
     chiptype=1              The chip type. [default: 1]
     blocks=                 Limit to specified blocks e.g. A1,A2,A4
     ms=8                    Plotting marker size [default: 8]
@@ -24,6 +26,7 @@ Additional options can be passed:
 
 from __future__ import absolute_import, print_function
 
+import json
 import os
 import sys
 import time
@@ -34,30 +37,70 @@ from matplotlib import pyplot as plt
 from Chip_StartUp_v5 import get_alphanumeric, get_shot_order, get_xy
 
 
-def hits_scrape(fid, column_choice, shot_order_addr_list, bound=False):
-    f = open(fid)
-    listy = f.readlines()[1].split("|")
-    f.close()
-    print("COLUMN CHOICES")
-    for i, item in enumerate(listy[2:10]):
-        print("Column", i + 1, item)
+def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
+    # type (str, Union[str,int], Any, bool) -> Dict
 
-    hits_dict = {}
-    f = open(fid)
-    for i, line in enumerate(f.readlines()[3:]):
-        if line.startswith("-"):
-            break
-        line.rstrip("\n")
-        listy = line.split("|")
-        entry = [x.lstrip().rstrip() for x in listy[1:]]
-        if not entry[column_choice]:
-            continue
-        addr = shot_order_addr_list[i]
-        if bound:
-            hits_dict[addr] = i
-        else:
-            hits_dict[addr] = entry[column_choice]
-    f.close()
+    with open(filename) as f:
+        raw_line_data = f.readlines()
+
+    # Decide what kind of file this is... old columnar, or json stream
+    try:
+        data = [json.loads(line) for line in raw_line_data]
+        print(
+            "COLUMN CHOICES:\n"
+            + "\n".join(
+                "    " + x
+                for x in data[0].keys()
+                if isinstance(data[0][x], (int, float))
+            )
+        )
+        column_choice = column_choice or "total_intensity"
+        # Do a sanity check that the hit file doesn't contain more hits than we
+        # have addresses. Less is probably better - a partial chip might be in
+        # the same address order?
+        if "expected_total" in data[0] and int(data[0]["expected_total"]) > len(
+            shot_order_addr_list
+        ):
+            sys.exit(
+                "Error: {} expected hits in {} but only {} expected addresses for chip".format(
+                    data[0]["expected_total"], filename, len(shot_order_addr_list)
+                )
+            )
+        # This data file isn't in hit-order, because the hitfinding service
+        # returns asynchronously. So use the image index as a lookup into
+        # the address list. This will also solve problems of missing hits/
+        # skipped images
+        hits_dict = {}
+        print(len(shot_order_addr_list))
+        for hit in data:
+            hits_dict[shot_order_addr_list[hit["file-pattern-index"]]] = hit[
+                column_choice
+            ]
+
+    except json.JSONDecodeError:
+        # We don't have a jsony file, we have a columnar one
+        columns = raw_line_data[1].split("|")
+        column_choice = 3 if column_choice is None else column_choice
+
+        print("COLUMN CHOICES")
+        for i, item in enumerate(columns[2:10]):
+            print("Column", i + 1, item)
+
+        hits_dict = {}
+        for i, line in enumerate(raw_line_data[3:]):
+            # End of table indicated by ------
+            if line.startswith("-"):
+                break
+            line.rstrip("\n")
+            listy = line.split("|")
+            entry = [x.lstrip().rstrip() for x in listy[1:]]
+            if not entry[column_choice]:
+                continue
+            addr = shot_order_addr_list[i]
+            if bound:
+                hits_dict[addr] = i
+            else:
+                hits_dict[addr] = entry[column_choice]
     return hits_dict
 
 
@@ -147,44 +190,41 @@ def run_fromdir_method(*args):
         return 0
 
 
-def run_fromfile_method(args):
-    filename = args["file"]
-    col = int(args.get("col", 3))
-    bind_type = args.get("binding")
-    chip_type = args.get("chiptype", "1")
-    block_list = []
-    if "block_list" in args:
-        block_list = args["block_list"].split(",")
-        for block in block_list:
+def run_fromfile_method(
+    filename, col=None, binding=None, chiptype="1", blocks=[], **kwargs
+):
+    if isinstance(blocks, str):
+        blocks = blocks.split()
+        for block in blocks:
             print(block)
 
-    if bind_type:
-        if bind_type.startswith("alpha"):
-            addr_list = get_alphanumeric(chip_type)
-        elif bind_type.startswith("shot"):
-            addr_list = get_shot_order(chip_type)
+    if binding:
+        if binding.startswith("alpha"):
+            addr_list = get_alphanumeric(chiptype)
+        elif binding.startswith("shot"):
+            addr_list = get_shot_order(chiptype)
         bound = True
     else:
-        addr_list = get_shot_order(chip_type)
+        addr_list = get_shot_order(chiptype)
         bound = False
 
     print("Length of address list:%s\n" % len(addr_list))
     new_addr_list = []
-    if len(block_list) > 0:
+    if len(blocks) > 0:
         for addr in addr_list:
             block = addr.split("_")[0]
-            if block in block_list:
+            if block in blocks:
                 new_addr_list.append(addr)
         addr_list = new_addr_list
         print("After:            ", len(addr_list))
 
     if filename.endswith("out"):
         hits_addr_dict = hits_scrape(filename, col, addr_list, bound)
-        x, y, z = make_plot_arrays(hits_addr_dict, chip_type)
+        x, y, z = make_plot_arrays(hits_addr_dict, chiptype)
         return x, y, z
     elif filename.endswith(".txt"):
         hits_addr_dict = det_dist_file_scrape(filename, addr_list)
-        x, y, z = make_plot_arrays(hits_addr_dict, chip_type)
+        x, y, z = make_plot_arrays(hits_addr_dict, chiptype)
         return x, y, z
     else:
         raise SyntaxError("Expected file that ends with .out\n\n\n")
@@ -352,7 +392,7 @@ def main(args=None):
         "blocks",
         "chiptype",
         "cmap",
-        "column",
+        "col",
         "dpi",
         "ms",
         "xlim",
@@ -389,7 +429,7 @@ def main(args=None):
     print(30 * "-", "\n")
 
     if method == "fromfile":
-        x, y, z = run_fromfile_method(arg_dict)
+        x, y, z = run_fromfile_method(arg_dict["file"], **arg_dict)
     elif method == "fromdir":
         x, y, z = run_fromdir_method(*args)
     elif method == "dosecolumns":
