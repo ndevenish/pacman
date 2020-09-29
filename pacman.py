@@ -353,7 +353,16 @@ def run_dosecolumns(*args):
     print()
 
 
-def main(*args):
+def main(args=None):
+    # Manual parsing because currently rather different from normal argparse
+    args = args or sys.argv[1:]
+    if not args:
+        print(__doc__.strip().splitlines()[0])
+        sys.exit(1)
+    if "-h" in args or "--help" in args:
+        print(__doc__.strip())
+        sys.exit()
+
     allowed_keyword_list = [
         "file",
         "dir",
@@ -371,15 +380,14 @@ def main(*args):
     ]
 
     for arg in args:
-        k = arg.split("=")[0]
-        v = arg.split("=")[1]
+        k, v = arg.split("=", maxsplit=1)
         print("Keyword argument: %s=%s" % (k, v))
-        there = [True for key in allowed_keyword_list if k in key]
-        if True not in there:
-            print("Unknown arg in args:", arg)
-            print("Allowed Keywords:", allowed_keyword_list)
-            print("Exiting")
-            return 0
+        if k not in allowed_keyword_list:
+            sys.exit(
+                "Unknown arg in args: {}\n    Allowed keywords: {}".format(
+                    arg, ", ".join(allowed_keyword_list)
+                )
+            )
 
     for arg in args:
         k, v = arg.split("=", maxsplit=1)
@@ -417,28 +425,5 @@ def main(*args):
     print("EOP")
 
 
-def print_usage():
-    print("")
-
-
 if __name__ == "__main__":
-    # Manual parsing because currently rather different from normal argparse
-    args = sys.argv[1:]
-    if not args:
-        print(__doc__.strip().splitlines()[0])
-        sys.exit(1)
-    if "-h" in args or "--help" in args:
-        print(__doc__.strip())
-        sys.exit()
-
-    if len(sys.argv) < 2:
-        print("\n\t\t\t--PACMAN")
-        print("./pacman.py file=/path/to/your/Filename.out")
-        print(
-            "\t\t\t\tEXAMPLE\n./pacman.py file=egbert_spots.out col=3 ms=8 cmap='terrain' xlim=0,25 ylim=0,25\n"
-        )
-        print(
-            "\t\t\t\tDOCUMENT\nsee https://docs.google.com/document/d/12564wj9aLwx7OlwqWHlEmI4lT_1qErsuvedVgjUE8F0/edit\n\n"
-        )
-    else:
-        main(*sys.argv[1:])
+    main()
