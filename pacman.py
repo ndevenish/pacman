@@ -1,11 +1,13 @@
 #!/dls_sw/apps/python/anaconda/1.7.0/64/bin/python
 """
-usage: pacman [-h|--help] [file=/path/to/file.out | dir=/path/to/dir] [OPTIONS]
+usage: pacman [-h|--help] [FILE or DIR] [OPTIONS]
 
 Plot I24 chip results.
 
 Methods:
-    file=/path/to/file.out      Plot results from a hitfinding file
+    FILE                        Plot results from a hitfinding file
+    DIR
+    file=/path/to/file.out      Alternate method to plot from file
     dir=/path/to/dir
 
 Additional options can be passed:
@@ -399,7 +401,24 @@ def main(args=None):
         "zlim",
     ]
     # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
-    arg_dict = {key: val for key, val in [x.split("=", 1) for x in args]}
+    arg_dict = {key: val for key, val in [x.split("=", 1) for x in args if "=" in x]}
+    # Handle any positional, including identifying duplications
+    positionals = [x for x in args if "=" not in x]
+    if len(positionals) > 1 or (
+        positionals and ("file" in arg_dict or "dir" in arg_dict)
+    ):
+        sys.exit("Error: Can only specify one file or directory location")
+    if positionals:
+        positional = positionals[0]
+        args.remove(positional)
+        if os.path.isfile(positional):
+            arg_dict["file"] = positional
+            args.append("file={}".format(positional))
+        elif os.path.isdir(positional):
+            arg_dict["dir"] = positional
+            args.append("dir={}".format(positional))
+        else:
+            sys.exit("Error: Could not identify {} as a file or dir".format(positional))
 
     # Validate all passed arguments are in our allowlist
     for key in arg_dict.keys():
@@ -410,6 +429,8 @@ def main(args=None):
                     key, ", ".join(allowed_keyword_list)
                 )
             )
+    if "file" in arg_dict and "dir" in arg_dict:
+        sys.exit("Error: Must specify file or dir, not both")
 
     if "file" in arg_dict:
         method = "fromfile"
