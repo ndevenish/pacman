@@ -238,7 +238,7 @@ def plot(x, y, z, *args):
         time.strftime("%Y%m%d_%H%M%S"),
     )
     fig = plt.figure(figsize=(10, 10), facecolor="0.75", edgecolor="w")
-    ax1 = fig.add_subplot(111, aspect=1, axisbg="0.5")
+    ax1 = fig.add_subplot(111, aspect=1, facecolor="0.5")
     fig.subplots_adjust(left=0.03, right=0.97, bottom=0.03, top=0.97)
 
     # plt.axis('off')
@@ -260,7 +260,7 @@ def plot(x, y, z, *args):
     plt.scatter(
         x,
         y,
-        c=z,
+        c=[float(col) for col in z],
         s=mrksz,
         marker="s",
         vmin=zlim_min,
