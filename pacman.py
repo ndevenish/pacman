@@ -1,4 +1,27 @@
 #!/dls_sw/apps/python/anaconda/1.7.0/64/bin/python
+"""
+usage: pacman [-h|--help] [file=/path/to/file.out | dir=/path/to/dir] [OPTIONS]
+
+Plot I24 chip results.
+
+Methods:
+    file=/path/to/file.out      Plot results from a hitfinding file
+    dir=/path/to/dir
+
+Additional options can be passed:
+    binding=[alpha|shot]    Binding type, if appropriate
+    column=3                Which column from the input file to read [default: 3]
+    chiptype=1              The chip type. [default: 1]
+    blocks=                 Limit to specified blocks e.g. A1,A2,A4
+    ms=8                    Plotting marker size [default: 8]
+    cmap=terrain            Matplotlib cmap. [default: terrain]
+    dpi=200                 Matplotlib save resolution, in DPI [default: 200]
+    xlim=min,max            Matplotlib x range to plot
+    ylim=min,max            Matplotlib y range to plot
+    zlim=min,max            Matplotlib z range to plot
+    alpha=1                 Matplotlib marker plotting alpha [default: 1]
+"""
+
 from __future__ import absolute_import, print_function
 
 import os
@@ -95,8 +118,6 @@ def run_fromdir_method(*args):
         if k.startswith("dir"):
             path = v
             print("\n\n\nThis is the path:", path)
-        elif k.startswith("wild"):
-            print("This is the wild:", path)
 
     addr_list = get_shot_order(chip_type="1")
     hits_dict = {}
@@ -120,8 +141,7 @@ def run_fromdir_method(*args):
             x, y, z = make_plot_arrays(hits_dict, chip_type="1")
             return x, y, z
         else:
-            print("Not a Valid Path")
-            return 0
+            sys.exit("Error: {} is not a valid path".format(path))
     else:
         raise SyntaxError("Unknown directory\n\n\n")
         return 0
@@ -260,7 +280,7 @@ def plot(x, y, z, *args):
     plt.scatter(
         x,
         y,
-        c=[float(col) for col in z],
+        c=[float(zcol) for zcol in z],
         s=mrksz,
         marker="s",
         vmin=zlim_min,
@@ -339,7 +359,6 @@ def main(*args):
         "dir",
         "binding",
         "column",
-        "wild",
         "chiptype",
         "blocks",
         "ms",
@@ -363,8 +382,7 @@ def main(*args):
             return 0
 
     for arg in args:
-        k = arg.split("=")[0]
-        v = arg.split("=")[1]
+        k, v = arg.split("=", maxsplit=1)
         if "file" in k:
             method = "fromfile"
         elif "dir" in k:
@@ -399,11 +417,23 @@ def main(*args):
     print("EOP")
 
 
+def print_usage():
+    print("")
+
+
 if __name__ == "__main__":
+    # Manual parsing because currently rather different from normal argparse
+    args = sys.argv[1:]
+    if not args:
+        print(__doc__.strip().splitlines()[0])
+        sys.exit(1)
+    if "-h" in args or "--help" in args:
+        print(__doc__.strip())
+        sys.exit()
+
     if len(sys.argv) < 2:
         print("\n\t\t\t--PACMAN")
         print("./pacman.py file=/path/to/your/Filename.out")
-        # print './pacman.py dir=YourDirectoryHere wild=yourwildcard\n'
         print(
             "\t\t\t\tEXAMPLE\n./pacman.py file=egbert_spots.out col=3 ms=8 cmap='terrain' xlim=0,25 ylim=0,25\n"
         )
