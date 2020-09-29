@@ -147,67 +147,47 @@ def run_fromdir_method(*args):
         return 0
 
 
-def run_fromfile_method(*args):
-    fid = None
-    col = 3
-    bind_type = None
-    chip_type = "1"
+def run_fromfile_method(args):
+    filename = args["file"]
+    col = int(args.get("col", 3))
+    bind_type = args.get("binding")
+    chip_type = args.get("chiptype", "1")
     block_list = []
-    for arg in args:
-        k = arg.split("=")[0]
-        v = arg.split("=")[1]
-        if k.startswith("file"):
-            fid = v
-        elif k.startswith("col"):
-            col = int(v)
-        elif k.startswith("chiptype"):
-            chip_type = v
-        elif k.startswith("bind"):
-            bind_type = v
-        elif k.startswith("blocks"):
-            try:
-                block_list = v.split(",")
-                for block in block_list:
-                    print(block)
-            except SyntaxError("Expected list of block separated by commas: A1,A2,A4"):
-                return 0
+    if "block_list" in args:
+        block_list = args["block_list"].split(",")
+        for block in block_list:
+            print(block)
 
-    if fid:
-        if bind_type:
-            if bind_type.startswith("alpha"):
-                addr_list = get_alphanumeric(chip_type)
-            elif bind_type.startswith("shot"):
-                addr_list = get_shot_order(chip_type)
-            bound = True
-        else:
+    if bind_type:
+        if bind_type.startswith("alpha"):
+            addr_list = get_alphanumeric(chip_type)
+        elif bind_type.startswith("shot"):
             addr_list = get_shot_order(chip_type)
-            bound = False
-
-        print("Length of address list:%s\n" % len(addr_list))
-        new_addr_list = []
-        if len(block_list) > 0:
-            for addr in addr_list:
-                block = addr.split("_")[0]
-                if block in block_list:
-                    new_addr_list.append(addr)
-            addr_list = new_addr_list
-            print("After:            ", len(addr_list))
-
-        if fid.endswith("out"):
-            hits_addr_dict = hits_scrape(fid, col, addr_list, bound)
-            x, y, z = make_plot_arrays(hits_addr_dict, chip_type)
-            return x, y, z
-        elif fid.endswith(".txt"):
-            hits_addr_dict = det_dist_file_scrape(fid, addr_list)
-            x, y, z = make_plot_arrays(hits_addr_dict, chip_type)
-            return x, y, z
-        else:
-            raise SyntaxError("Expected file that ends with .out\n\n\n")
-            return 0
-
+        bound = True
     else:
-        raise SyntaxError("Expected file that ends with .spots or .out")
-        print("Insert raw intput code here")
+        addr_list = get_shot_order(chip_type)
+        bound = False
+
+    print("Length of address list:%s\n" % len(addr_list))
+    new_addr_list = []
+    if len(block_list) > 0:
+        for addr in addr_list:
+            block = addr.split("_")[0]
+            if block in block_list:
+                new_addr_list.append(addr)
+        addr_list = new_addr_list
+        print("After:            ", len(addr_list))
+
+    if filename.endswith("out"):
+        hits_addr_dict = hits_scrape(filename, col, addr_list, bound)
+        x, y, z = make_plot_arrays(hits_addr_dict, chip_type)
+        return x, y, z
+    elif filename.endswith(".txt"):
+        hits_addr_dict = det_dist_file_scrape(filename, addr_list)
+        x, y, z = make_plot_arrays(hits_addr_dict, chip_type)
+        return x, y, z
+    else:
+        raise SyntaxError("Expected file that ends with .out\n\n\n")
         return 0
 
 
@@ -366,52 +346,50 @@ def main(args=None):
     allowed_keyword_list = [
         "file",
         "dir",
+        "dosecolumns",
+        "alpha",
         "binding",
-        "column",
-        "chiptype",
         "blocks",
-        "ms",
+        "chiptype",
         "cmap",
+        "column",
         "dpi",
+        "ms",
         "xlim",
         "ylim",
         "zlim",
-        "alpha",
     ]
+    # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
+    arg_dict = {key: val for key, val in [x.split("=", maxsplit=1) for x in args]}
 
-    for arg in args:
-        k, v = arg.split("=", maxsplit=1)
-        print("Keyword argument: %s=%s" % (k, v))
-        if k not in allowed_keyword_list:
+    # Validate all passed arguments are in our allowlist
+    for key in arg_dict.keys():
+        print("Keyword argument: %s=%s" % (key, arg_dict[key]))
+        if key not in allowed_keyword_list:
             sys.exit(
                 "Unknown arg in args: {}\n    Allowed keywords: {}".format(
-                    arg, ", ".join(allowed_keyword_list)
+                    key, ", ".join(allowed_keyword_list)
                 )
             )
 
-    for arg in args:
-        k, v = arg.split("=", maxsplit=1)
-        if "file" in k:
-            method = "fromfile"
-        elif "dir" in k:
-            method = "fromdir"
-        elif "dosecolumns" in k:
-            method = "dosecolumns"
+    if "file" in arg_dict:
+        method = "fromfile"
+    elif "dir" in arg_dict:
+        method = "fromdir"
+    elif "dosecolumns" in arg_dict:
+        method = "dosecolumns"
+    else:
+        sys.exit("Error: Cannot determine method. Please pass file= or dir=")
+
     print("\n\nCalled PACMAN method = %s\n" % method)
     print("\n\nDATA KEYWORDS\n", 30 * "-")
     print("file=filename.out")
-    # print 'dir=/where/the/processed/data/is/kept/ ....... This for directory method NOT the file directory'
-    # print 'dosecolumns=1'
-    print(
-        "blocks=A1,A2,A3,A4 ........................... Blocks MUST be in block order"
-    )
-    print(
-        "                                               Total number of images in file must not exceed 200*num_of_blocks"
-    )
+    print("blocks=A1,A2,A3,A4 ...................,,,,.. Blocks MUST be in block order")
+    print("          Total number of images in file must not exceed 200*num_of_blocks")
     print(30 * "-", "\n")
 
     if method == "fromfile":
-        x, y, z = run_fromfile_method(*args)
+        x, y, z = run_fromfile_method(arg_dict)
     elif method == "fromdir":
         x, y, z = run_fromdir_method(*args)
     elif method == "dosecolumns":
