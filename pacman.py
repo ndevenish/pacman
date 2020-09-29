@@ -400,7 +400,7 @@ def main(args=None):
         "zlim",
     ]
     # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
-    arg_dict = {key: val for key, val in [x.split("=", maxsplit=1) for x in args]}
+    arg_dict = {key: val for key, val in [x.split("=", 1) for x in args]}
 
     # Validate all passed arguments are in our allowlist
     for key in arg_dict.keys():
