@@ -71,7 +71,6 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
         # the address list. This will also solve problems of missing hits/
         # skipped images
         hits_dict = {}
-        print(len(shot_order_addr_list))
         for hit in data:
             hits_dict[shot_order_addr_list[hit["file-pattern-index"]]] = hit[
                 column_choice
