@@ -24,6 +24,10 @@ Additional options can be passed:
     ylim=min,max            Matplotlib y range to plot
     zlim=min,max            Matplotlib z range to plot
     alpha=1                 Matplotlib marker plotting alpha [default: 1]
+    method=[new|old]        Plotting method. "old" plots markers for each well,
+                            which causes overlap and bad results when zooming.
+                            "new" causes images with a pixel per well to be
+                            drawn for each block.
 """
 
 from __future__ import absolute_import, print_function
@@ -32,16 +36,22 @@ import json
 import os
 import sys
 import time
+from collections import namedtuple
 
 import numpy as np
 from matplotlib import pyplot as plt
 
-from Chip_StartUp_v5 import get_alphanumeric, get_shot_order, get_xy
+from Chip_StartUp_v5 import (
+    address_to_index,
+    get_alphanumeric,
+    get_format,
+    get_shot_order,
+    get_xy,
+)
 
 
 def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
     # type (str, Union[str,int], Any, bool) -> Dict
-
     with open(filename) as f:
         raw_line_data = f.readlines()
 
@@ -137,6 +147,107 @@ def det_dist_file_scrape(fid, shot_order_addr_list):
     return hits_dict
 
 
+ChipFormat = namedtuple(
+    "ChipFormat",
+    [
+        "blocks_x",
+        "blocks_y",
+        "wells_x",
+        "wells_y",
+        "well_distance",
+        "block_distance_x",
+        "block_distance_y",
+    ],
+)
+
+
+class ChipHitPlotter(object):
+    """
+    Handles tracking and plotting of blocks.
+
+    Blocks are drawn as a single bitmap image - so each well is distinct
+    and there are absolutely no overlaps.
+    """
+
+    def __init__(self, chip_type):
+        # type: (str) -> None
+        self.chip_type = chip_type
+        self.metrics = ChipFormat(*get_format(chip_type))
+
+        # Create the array of block contents
+        self.blocks = np.full(
+            (
+                self.metrics.blocks_y,
+                self.metrics.blocks_x,
+                self.metrics.wells_y,
+                self.metrics.wells_x,
+            ),
+            -1,
+        )
+        for col in range(self.metrics.blocks_x):
+            for row in range(self.metrics.blocks_y):
+                self.blocks[row, col][:5, :5] = 0.4e6
+
+    def set_from_dict(self, hits_addr_dict):
+        # type: (Dict[str, float]) -> None
+        """Fill out all the wells from an address dictionary"""
+        for addr, val in hits_addr_dict.items():
+            self.set_well(addr, val)
+
+    def set_well(self, addr, value):
+        # type: (str, float) -> None
+        """Set the value of a well.
+
+        Args:
+            addr: The address string of the well e.g. A1_aj
+            value: The value to set the cell to
+        """
+        blockR, blockC, windowR, windowC = address_to_index(addr)
+        self.blocks[blockR, blockC, windowR, windowC] = value
+
+    def draw(self, fig, **kwargs):
+        """
+        Draw a chip.
+
+        Args:
+            fig: The target to draw on e.g. a figure, or pyplot
+            kwargs: Any matplotlib imshow drawing argument
+        """
+        vmin = kwargs.pop("vmin", np.max(np.min(self.blocks), 0))
+        vmax = kwargs.pop("vmax", np.max(self.blocks))
+
+        block_width = (self.metrics.wells_x - 1) * self.metrics.well_distance
+        block_height = (self.metrics.wells_y - 1) * self.metrics.well_distance
+        # Edge-to-edge well coverage
+        well_extents_x = self.metrics.wells_x * self.metrics.well_distance
+        well_extents_y = self.metrics.wells_y * self.metrics.well_distance
+        image_artists = []
+        for col in range(self.metrics.blocks_x):
+            for row in range(self.metrics.blocks_y):
+                # Work out position of top-left corner of well
+                x = (
+                    col * (block_width + self.metrics.block_distance_x)
+                    - self.metrics.well_distance / 2
+                )
+                y = (
+                    row * (block_height + self.metrics.block_distance_y)
+                    - self.metrics.well_distance / 2
+                )
+                image = self.blocks[row, col]
+                image_masked = np.ma.masked_where(image < 0, image)
+                image_artists.append(
+                    fig.imshow(
+                        image_masked,
+                        extent=[x, x + well_extents_x, y, y + well_extents_y],
+                        vmin=vmin,
+                        vmax=vmax,
+                        origin="lower",
+                        **kwargs
+                    )
+                )
+        return image_artists
+
+
 def make_plot_arrays(hits_addr_dict, chip_type):
     x_list, y_list, z_list = [], [], []
     for addr, val in hits_addr_dict.items():
@@ -221,18 +332,21 @@ def run_fromfile_method(
 
     if filename.endswith("out"):
         hits_addr_dict = hits_scrape(filename, col, addr_list, bound)
+        plotter = ChipHitPlotter(chiptype)
+        plotter.set_from_dict(hits_addr_dict)
         x, y, z = make_plot_arrays(hits_addr_dict, chiptype)
-        return x, y, z
+        return x, y, z, plotter
     elif filename.endswith(".txt"):
         hits_addr_dict = det_dist_file_scrape(filename, addr_list)
+        plotter = ChipHitPlotter(chiptype)
+        plotter.set_from_dict(hits_addr_dict)
         x, y, z = make_plot_arrays(hits_addr_dict, chiptype)
-        return x, y, z
-    else:
-        raise SyntaxError("Expected file that ends with .out\n\n\n")
-        return 0
+        return x, y, z, plotter
+
+    sys.exit("Unrecognised file extension: Expect .txt or .out")
 
 
-def plot(x, y, z, *args):
+def plot(x, y, z, plotter, *args):
     alfa = 1
     col = 3
     mrksz = 8
@@ -241,6 +355,7 @@ def plot(x, y, z, *args):
     xlim_min, xlim_max = (-1, 25)
     ylim_min, ylim_max = (-1, 25)
     zlim_min, zlim_max = (None, None)
+    method = "old"
 
     for arg in args:
         k = arg.split("=")[0]
@@ -267,6 +382,8 @@ def plot(x, y, z, *args):
             zlim_min, zlim_max = v.split(",")
             zlim_min = float(zlim_min)
             zlim_max = float(zlim_max)
+        elif k.startswith("method"):
+            method = v
 
     raw_fid = fid.split("/")[-1]
     print("\nraw_fid", raw_fid)
@@ -298,17 +415,21 @@ def plot(x, y, z, *args):
         z = np.array(a_list)
 
     # plt.scatter(x, y, c=z, s=mrksz, marker='s',vmin=95, vmax=98.5, alpha=alfa, cmap=cmap_choice)
-    plt.scatter(
-        x,
-        y,
-        c=[float(zcol) for zcol in z],
-        s=mrksz,
-        marker="s",
-        vmin=zlim_min,
-        vmax=zlim_max,
-        alpha=alfa,
-        cmap=cmap_choice,
-    )
+
+    if method == "old":
+        plt.scatter(
+            x,
+            y,
+            c=[float(zcol) for zcol in z],
+            s=mrksz,
+            marker="s",
+            vmin=zlim_min,
+            vmax=zlim_max,
+            alpha=alfa,
+            cmap=cmap_choice,
+        )
+    else:
+        plotter.draw(plt, cmap=cmap_choice)
 
     ax1.invert_yaxis()
     plt.colorbar()
@@ -399,6 +520,7 @@ def main(args=None):
         "xlim",
         "ylim",
         "zlim",
+        "method",
     ]
     # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
     arg_dict = {key: val for key, val in [x.split("=", 1) for x in args if "=" in x]}
@@ -448,8 +570,10 @@ def main(args=None):
     print("          Total number of images in file must not exceed 200*num_of_blocks")
     print(30 * "-", "\n")
 
+    plotter = None
+
     if method == "fromfile":
-        x, y, z = run_fromfile_method(arg_dict["file"], **arg_dict)
+        x, y, z, plotter = run_fromfile_method(arg_dict["file"], **arg_dict)
     elif method == "fromdir":
         x, y, z = run_fromdir_method(*args)
     elif method == "dosecolumns":
@@ -459,7 +583,7 @@ def main(args=None):
     else:
         raise SyntaxError("Unknown method")
 
-    plot(x, y, z, *args)
+    plot(x, y, z, plotter, *args)
     print("EOP")
 
 

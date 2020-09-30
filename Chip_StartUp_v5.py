@@ -249,6 +249,21 @@ def fiducials(chip_type):
 
 
 def get_format(chip_type):
+    # type: (str) -> Tuple[int, int, int, int, float, float, float]
+    """Get information about chip layout
+
+    Args:
+        chip_type: The chip type
+
+    Returns: A list of:
+        number_of_blocks_x
+        number_of_blocks_y
+        number_of_wells_per_block_x
+        number_of_wells_per_block_y
+        distance_between_wells_within_block
+        distance_between_blocks_horizontally
+        distance_between_blocks_vertically
+    """
     if chip_type == "0":
         w2w = 0.125
         b2b_horz = 0.825
@@ -285,8 +300,10 @@ def get_format(chip_type):
     return cell_format
 
 
-def get_xy(addr, chip_type):
-    entry = addr.split("_")[-2:]
+def address_to_index(address):
+    # type: (str) -> Tuple[int,int,int,int]
+    """Converts an address string to block/well rows and columns"""
+    entry = address.split("_")[-2:]
     R, C = entry[0][0], entry[0][1]
     r2, c2 = entry[1][0], entry[1][1]
     blockR = string.ascii_uppercase.index(R)
@@ -294,6 +311,11 @@ def get_xy(addr, chip_type):
     lowercase_list = list(string.ascii_lowercase + string.ascii_uppercase + "0")
     windowR = lowercase_list.index(r2)
     windowC = lowercase_list.index(c2)
+    return blockR, blockC, windowR, windowC
+
+
+def get_xy(addr, chip_type):
+    blockR, blockC, windowR, windowC = address_to_index(addr)
 
     (
         x_block_num,
