@@ -27,7 +27,7 @@ Additional options can be passed:
     method=[new|old]        Plotting method. "old" plots markers for each well,
                             which causes overlap and bad results when zooming.
                             "new" causes images with a pixel per well to be
-                            drawn for each block.
+                            drawn for each block. [default: new]
 """
 
 from __future__ import absolute_import, print_function
@@ -48,6 +48,11 @@ from Chip_StartUp_v5 import (
     get_shot_order,
     get_xy,
 )
+
+try:
+    from typing import Dict
+except ImportError:
+    pass
 
 
 def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
@@ -355,7 +360,7 @@ def plot(x, y, z, plotter, *args):
     xlim_min, xlim_max = (-1, 25)
     ylim_min, ylim_max = (-1, 25)
     zlim_min, zlim_max = (None, None)
-    method = "old"
+    method = "new"
 
     for arg in args:
         k = arg.split("=")[0]
