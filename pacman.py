@@ -93,7 +93,7 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
                 column_choice
             ]
 
-    except json.JSONDecodeError:
+    except ValueError:  # json.JSONDecodeError:
         # We don't have a jsony file, we have a columnar one
         columns = raw_line_data[1].split("|")
         column_choice = 3 if column_choice is None else column_choice
