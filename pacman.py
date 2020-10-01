@@ -12,7 +12,7 @@ Methods:
 
 Additional options can be passed:
     binding=[alpha|shot]    Binding type, if appropriate
-    column=3                Which column from the input file to read. Accepts
+    col=3                   Which column from the input file to read. Accepts
                             numbers (for columnar .out files) or names (for new
                             json-style files) [default: 3 or total_intensity]
     chiptype=1              The chip type. [default: 1]
