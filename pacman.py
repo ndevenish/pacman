@@ -172,7 +172,7 @@ class ChipHitPlotter(object):
                 self.metrics.wells_y,
                 self.metrics.wells_x,
             ),
-            -1,
+            -1.0,
         )
         for col in range(self.metrics.blocks_x):
             for row in range(self.metrics.blocks_y):
