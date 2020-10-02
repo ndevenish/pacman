@@ -8,6 +8,11 @@ import time
 import numpy as np
 from six.moves import range, zip
 
+try:
+    from typing import Tuple
+except ImportError:
+    pass
+
 ##############################################
 # STARTUP  STARTUP  STARTUP  STARTUP STARTUP #
 # This version last edited 25Apr2017 by DAS  #
@@ -268,35 +273,35 @@ def get_format(chip_type):
         w2w = 0.125
         b2b_horz = 0.825
         b2b_vert = 1.125
-        chip_format = [9, 9, 12, 12]
+        chip_format = (9, 9, 12, 12)
     elif chip_type == "1":
         w2w = 0.125
         b2b_horz = 0.800
         b2b_vert = 0.800
-        chip_format = [8, 8, 20, 20]
+        chip_format = (8, 8, 20, 20)
     elif chip_type == "2":
         w2w = 0.150
         b2b_horz = 0.784
         b2b_vert = 0.784
-        chip_format = [3, 3, 53, 53]
+        chip_format = (3, 3, 53, 53)
     elif chip_type == "3":
         w2w = 0.600
         b2b_horz = 0.0
         b2b_vert = 0.0
-        chip_format = [1, 1, 25, 25]
+        chip_format = (1, 1, 25, 25)
     elif chip_type == "4":
         w2w = 0.200
         b2b_horz = 4.0
         b2b_vert = 4.0
-        chip_format = [7, 7, 15, 15]
+        chip_format = (7, 7, 15, 15)
     elif chip_type == "5":
         w2w = 0.125
         b2b_horz = 1.325
         b2b_vert = 1.325
-        chip_format = [7, 7, 20, 20]
+        chip_format = (7, 7, 20, 20)
     else:
         print("unknown chip type")
-    cell_format = chip_format + [w2w, b2b_horz, b2b_vert]
+    cell_format = chip_format + (w2w, b2b_horz, b2b_vert)
     return cell_format
 
 
