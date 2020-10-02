@@ -274,15 +274,9 @@ def get_format(chip_type):
     Args:
         chip_type: The chip type
 
-    Returns: A list of:
-        number_of_blocks_x
-        number_of_blocks_y
-        number_of_wells_per_block_x
-        number_of_wells_per_block_y
-        distance_between_wells_within_block
-        distance_between_blocks_horizontally
-        distance_between_blocks_vertically
+    Returns: A description of the chip measurements
     """
+
     if chip_type == "0":
         w2w = 0.125
         b2b_horz = 0.825
