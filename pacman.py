@@ -36,7 +36,6 @@ import json
 import os
 import sys
 import time
-from collections import namedtuple
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -152,20 +151,6 @@ def det_dist_file_scrape(fid, shot_order_addr_list):
     return hits_dict
 
 
-ChipFormat = namedtuple(
-    "ChipFormat",
-    [
-        "blocks_x",
-        "blocks_y",
-        "wells_x",
-        "wells_y",
-        "well_distance",
-        "block_distance_x",
-        "block_distance_y",
-    ],
-)
-
-
 class ChipHitPlotter(object):
     """
     Handles tracking and plotting of blocks.
@@ -177,7 +162,7 @@ class ChipHitPlotter(object):
     def __init__(self, chip_type):
         # type: (str) -> None
         self.chip_type = chip_type
-        self.metrics = ChipFormat(*get_format(chip_type))
+        self.metrics = get_format(chip_type)
 
         # Create the array of block contents
         self.blocks = np.full(

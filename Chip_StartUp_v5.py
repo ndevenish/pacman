@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function
 import os
 import string
 import time
+from collections import namedtuple
 
 import numpy as np
 from six.moves import range, zip
@@ -19,6 +20,19 @@ except ImportError:
 # RLO at i24 setting up for beamtime later   #
 # in the month                               #
 ##############################################
+
+ChipFormat = namedtuple(
+    "ChipFormat",
+    [
+        "blocks_x",
+        "blocks_y",
+        "wells_x",
+        "wells_y",
+        "well_distance",
+        "block_distance_x",
+        "block_distance_y",
+    ],
+)
 
 
 def scrape_parameter_file(location=None):
@@ -254,7 +268,7 @@ def fiducials(chip_type):
 
 
 def get_format(chip_type):
-    # type: (str) -> Tuple[int, int, int, int, float, float, float]
+    # type: (str) -> ChipFormat
     """Get information about chip layout
 
     Args:
@@ -301,8 +315,7 @@ def get_format(chip_type):
         chip_format = (7, 7, 20, 20)
     else:
         print("unknown chip type")
-    cell_format = chip_format + (w2w, b2b_horz, b2b_vert)
-    return cell_format
+    return ChipFormat(*(chip_format + (w2w, b2b_horz, b2b_vert)))
 
 
 def address_to_index(address):
