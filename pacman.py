@@ -62,6 +62,11 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
     # type (str, Union[str,int], Any, bool) -> Dict
     """Read in hits from a hit file."""
 
+    # Minor fudge: this is set like this so that we get a nice "default"
+    # in the automatic help string....
+    if column_choice == "3 or total_intensity":
+        column_choice = None
+
     with open(filename) as f:
         raw_line_data = f.readlines()
 
@@ -418,7 +423,7 @@ def main(args=None):
     )
     parser.add_argument(
         "--column",
-        default=3,
+        default="3 or total_intensity",
         help="Which column from the input file to read. Accepts numbers (for columnar .out files) or names (for new json-style files) [default: 3 or total_intensity])",
     )
     parser.add_argument("--chiptype", default="1", help="The chip type", type=str)
