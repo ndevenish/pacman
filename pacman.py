@@ -331,9 +331,9 @@ def run_fromfile_method(
 
 
 def plot(x, y, z, plotter, options):
-    out_filename = (
-        f"{options.file.stem}_{options.column}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
-    )
+    default_output = not options.output
+    if not options.output:
+        options.output = f"{options.file.stem}_{options.column}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
 
     fig = plt.figure(figsize=(10, 10), facecolor="0.75", edgecolor="w")
     ax1 = fig.add_subplot(111, aspect=1, facecolor="0.5")
@@ -369,7 +369,7 @@ def plot(x, y, z, plotter, options):
 
     plt.tight_layout()
     plt.savefig(
-        out_filename,
+        options.output,
         dpi=options.dpi,
         # facecolor="w",
         bbox_inches="tight",
@@ -377,8 +377,10 @@ def plot(x, y, z, plotter, options):
         transparent=False,
     )
 
-    print(f"Imaged saved as: {out_filename}")
-    if not options.noshow:
+    print(f"Imaged saved as: {options.output}")
+
+    # If we asked to or are writing a generated filename, show
+    if default_output or options.show:
         plt.show()
 
 
@@ -396,11 +398,12 @@ def main(args=None):
         help="Plot results from a hitfinding file",
         nargs="?",
     )
-    # These can be passed via option form but are legacy
+    parser.add_argument("-o", "--output", help="The output filename to write plot to.")
+    # dir= and file= can be passed via option form but are deprecated
     parser.add_argument("--dir", "--file", help=argparse.SUPPRESS, type=Path)
     parser.add_argument(
-        "--noshow",
-        help="Don't show an interactive plot, only write to file",
+        "--show",
+        help="Always show plot, even if specifying output filename.",
         action="store_true",
     )
     parser.add_argument(
