@@ -463,7 +463,10 @@ def main(args=None):
     # Pre-convert anything option=like to an --option=like so that we
     # remain (mostly) compatible with the old way of running pacman.
     args = args or sys.argv[1:]
-    args = [f"--{x}" if ("=" in x and not x.startswith("-")) else x for x in args]
+    args = [
+        f"--{x}" if ("=" in x and not x.startswith("-") and not Path(x).exists()) else x
+        for x in args
+    ]
     options = parser.parse_args(args)
 
     # Handle redundancy of file/file=/dir=
