@@ -1,4 +1,4 @@
-#!/dls_sw/apps/python/anaconda/1.7.0/64/bin/python
+#!/usr/bin/env python3
 """
 usage: pacman [-h|--help] [--noshow] [FILE or DIR] [OPTIONS]
 
@@ -31,12 +31,11 @@ Additional options can be passed:
                             drawn for each block. [default: new]
 """
 
-from __future__ import absolute_import, print_function
-
 import json
 import os
 import sys
 import time
+from typing import Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -48,11 +47,6 @@ from Chip_StartUp_v5 import (
     get_shot_order,
     get_xy,
 )
-
-try:
-    from typing import Dict
-except ImportError:
-    pass
 
 
 def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
