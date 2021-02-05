@@ -105,7 +105,9 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
     except json.JSONDecodeError:
         # We don't have a jsony file, we have a columnar one
         columns = raw_line_data[1].split("|")
-        column_choice = 3 if column_choice is None else column_choice
+        column_choice = (
+            3 if column_choice is (None or "total_intensity") else column_choice
+        )
 
         print("COLUMN CHOICES")
         for i, item in enumerate(columns[2:10]):
@@ -344,7 +346,7 @@ def run_fromfile_method(
 def plot(x, y, z, plotter, options):
     default_output = not options.output
     if not options.output:
-        options.output = f"{options.file.stem}_{options.column or 'total_intensity'}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
+        options.output = f"{options.file.stem}_{options.column}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
 
     fig = plt.figure(figsize=(10, 10), facecolor="0.75", edgecolor="w")
     ax1 = fig.add_subplot(111, aspect=1, facecolor="0.5")
@@ -422,7 +424,7 @@ def main(args=None):
     )
     parser.add_argument(
         "--column",
-        default="3 or total_intensity",
+        default="total_intensity",
         help="Which column from the input file to read. Accepts numbers (for columnar .out files) or names (for new json-style files) [default: 3 or total_intensity])",
     )
     parser.add_argument("--chiptype", default="1", help="The chip type", type=str)
@@ -463,10 +465,6 @@ def main(args=None):
         for x in args
     ]
     options = parser.parse_args(args)
-    # Minor fudge: this is set like this so that we get a nice "default"
-    # in the automatic help string....
-    if options.column == "3 or total_intensity":
-        options.column = None
 
     # Handle redundancy of file/file=/dir=
     if options.file and options.dir:
