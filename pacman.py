@@ -88,7 +88,7 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
                 column_choice
             ]
 
-    except ValueError:  # json.JSONDecodeError:
+    except json.JSONDecodeError:
         # We don't have a jsony file, we have a columnar one
         columns = raw_line_data[1].split("|")
         column_choice = 3 if column_choice is None else column_choice
@@ -425,10 +425,10 @@ def plot(x, y, z, plotter, *args, show=True):
     plt.savefig(
         path + out_fid,
         dpi=pixels,
-        facecolor="0.15",
+        # facecolor="w",
         bbox_inches="tight",
         pad_inches=0,
-        transparent=True,
+        transparent=False,
     )
     print("\n\nPLOTTING KEYWORDS\n", 30 * "-")
     print(f"col={col}")
