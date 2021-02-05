@@ -35,7 +35,8 @@ import json
 import os
 import sys
 import time
-from typing import Dict
+from pathlib import Path
+from typing import Dict, Tuple, Union
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -59,16 +60,16 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
 
     # Decide what kind of file this is... old columnar, or json stream
     try:
+        column_choice = column_choice or "total_intensity"
         data = [json.loads(line) for line in raw_line_data]
         print(
             "COLUMN CHOICES:\n"
             + "\n".join(
-                "    " + x
+                (" -> " if x == column_choice else "    ") + x
                 for x in data[0].keys()
                 if isinstance(data[0][x], (int, float))
             )
         )
-        column_choice = column_choice or "total_intensity"
         # Do a sanity check that the hit file doesn't contain more hits than we
         # have addresses. Less is probably better - a partial chip might be in
         # the same address order?
@@ -253,13 +254,8 @@ def make_plot_arrays(hits_addr_dict, chip_type):
     return x, y, z
 
 
-def run_fromdir_method(*args):
-    for arg in args:
-        k = arg.split("=")[0]
-        v = arg.split("=")[1]
-        if k.startswith("dir"):
-            path = v
-            print("\n\n\nThis is the path:", path)
+def run_fromdir_method(path):
+    print("\n\n\nThis is the path:", path)
 
     addr_list = get_shot_order(chip_type="1")
     hits_dict = {}
@@ -290,8 +286,9 @@ def run_fromdir_method(*args):
 
 
 def run_fromfile_method(
-    filename, col=None, binding=None, chiptype="1", blocks=[], **kwargs
+    filename, column=None, binding=None, chiptype="1", blocks=None, **kwargs
 ):
+    blocks = blocks or []
     if isinstance(blocks, str):
         blocks = blocks.split()
         for block in blocks:
@@ -317,13 +314,13 @@ def run_fromfile_method(
         addr_list = new_addr_list
         print("After:            ", len(addr_list))
 
-    if filename.endswith("out"):
-        hits_addr_dict = hits_scrape(filename, col, addr_list, bound)
+    if filename.suffix == ".out":
+        hits_addr_dict = hits_scrape(filename, column, addr_list, bound)
         plotter = ChipHitPlotter(chiptype)
         plotter.set_from_dict(hits_addr_dict)
         x, y, z = make_plot_arrays(hits_addr_dict, chiptype)
         return x, y, z, plotter
-    elif filename.endswith(".txt"):
+    elif filename.suffix == ".txt":
         hits_addr_dict = det_dist_file_scrape(filename, addr_list)
         plotter = ChipHitPlotter(chiptype)
         plotter.set_from_dict(hits_addr_dict)
@@ -333,86 +330,44 @@ def run_fromfile_method(
     sys.exit("Unrecognised file extension: Expect .txt or .out")
 
 
-def plot(x, y, z, plotter, *args, show=True):
-    alfa = 1
-    col = 3
-    mrksz = 8
-    pixels = 200
-    cmap_choice = "terrain"
-    xlim_min, xlim_max = (-1, 25)
-    ylim_min, ylim_max = (-1, 25)
-    zlim_min, zlim_max = (None, None)
-    method = "new"
+def _split_option(opt: Union[str, Tuple[float, float]]) -> Tuple[float, float]:
+    """Split and convert (if necessary) a "min,max" string"""
+    if isinstance(opt, str):
+        a, b = opt.split(",")
+        return float(a), float(b)
+    else:
+        return opt
 
-    for arg in args:
-        k = arg.split("=")[0]
-        v = arg.split("=")[1]
-        if k.startswith("file"):
-            fid = v
-        if k.startswith("dir"):
-            fid = v
-        elif k.startswith("col"):
-            col = str(v)
-        elif k.startswith("ms"):
-            mrksz = int(v)
-        elif k.startswith("alpha"):
-            alfa = float(v)
-        elif k.startswith("cmap"):
-            cmap_choice = str(v)
-        elif k.startswith("dpi"):
-            pixels = int(v)
-        elif k.startswith("xlim"):
-            xlim_min, xlim_max = v.split(",")
-        elif k.startswith("ylim"):
-            ylim_min, ylim_max = v.split(",")
-        elif k.startswith("zlim"):
-            zlim_min, zlim_max = v.split(",")
-            zlim_min = float(zlim_min)
-            zlim_max = float(zlim_max)
-        elif k.startswith("method"):
-            method = v
 
-    raw_fid = fid.split("/")[-1]
-    print("\nraw_fid", raw_fid)
-    if raw_fid == "":
-        raw_fid = fid.split("/")[-2]
+def plot(x, y, z, plotter, options):
+    out_filename = (
+        f"{options.file.stem}_{options.column}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
+    )
 
-    out_fid = f"{raw_fid.split('.')[0]}_{col}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
     fig = plt.figure(figsize=(10, 10), facecolor="0.75", edgecolor="w")
     ax1 = fig.add_subplot(111, aspect=1, facecolor="0.5")
     fig.subplots_adjust(left=0.03, right=0.97, bottom=0.03, top=0.97)
+    ax1.set_xlim(options.xlim)
+    ax1.set_ylim(options.ylim)
 
-    # plt.axis('off')
-    ax1.set_xlim(float(xlim_min), float(xlim_max))
-    ax1.set_ylim(float(ylim_min), float(ylim_max))
+    if options.zlim:
+        z = np.clip(z, *options.zlim)
 
-    if not (zlim_min, zlim_max) == (None, None):
-        a_list = []
-        for entry in z.tolist():
-            if float(entry) > zlim_max:
-                a_list.append(zlim_max)
-            elif float(entry) < zlim_min:
-                a_list.append(zlim_min)
-            else:
-                a_list.append(entry)
-        z = np.array(a_list)
-
-    # plt.scatter(x, y, c=z, s=mrksz, marker='s',vmin=95, vmax=98.5, alpha=alfa, cmap=cmap_choice)
-
-    if method == "old":
+    if options.method == "old":
         plt.scatter(
             x,
             y,
             c=[float(zcol) for zcol in z],
-            s=mrksz,
+            s=options.ms,
             marker="s",
-            vmin=zlim_min,
-            vmax=zlim_max,
-            alpha=alfa,
-            cmap=cmap_choice,
+            vmin=options.zlim[0],
+            vmax=options.zlim[1],
+            alpha=options.alpha,
+            cmap=options.cmap,
         )
     else:
-        plotter.draw(plt, cmap=cmap_choice)
+        assert plotter
+        plotter.draw(plt, cmap=options.cmap)
 
     ax1.invert_yaxis()
 
@@ -422,179 +377,106 @@ def plot(x, y, z, plotter, *args, show=True):
     plt.colorbar(cax=cax)
 
     plt.tight_layout()
-    # plt.colorbar()
-    path = "."
     plt.savefig(
-        path + out_fid,
-        dpi=pixels,
+        out_filename,
+        dpi=options.dpi,
         # facecolor="w",
         bbox_inches="tight",
         pad_inches=0,
         transparent=False,
     )
-    print("\n\nPLOTTING KEYWORDS\n", 30 * "-")
-    print(f"col={col}")
-    print(f"ms={mrksz}")
-    print(f"cmap={cmap_choice}")
-    print(f"dpi={pixels}")
-    print(f"xlim={xlim_min},{xlim_max}")
-    print(f"ylim={ylim_min},{ylim_max}")
-    print(f"zlim={zlim_min},{zlim_max}")
-    print(f"alpha={alfa}")
-    print(30 * "-", "\n\n")
-    print(f"Imaged saved as: {path}{out_fid}")
-    if show:
+
+    print(f"Imaged saved as: {out_filename}")
+    if not options.noshow:
         plt.show()
 
 
-def run_dosecolumns(*args):
-    path = "/dls/i24/data/2017/nt14493-54/processing/find_spots/hector_pacman/"
-    chip_name = "hector"
-    num_of_doses = 5
-    list_of_lists = []
-    for x in range(num_of_doses):
-        list_of_lists.append([])
-
-    if os.path.isdir(path):
-        fid_list = sorted(os.listdir(path))
-        list_of_files = [fid for fid in fid_list if fid.startswith(chip_name)]
-        for fid in list_of_files:
-            print(fid)
-            f = open(path + fid)
-            for i, line in enumerate(f.readlines()[3:]):
-                # print i, i % num_of_doses
-                if line.startswith("-"):
-                    break
-                else:
-                    list_of_lists[i % num_of_doses].append(line)
-            f.close()
-
-    f = open(path + fid)
-    header = f.readlines()[:3]
-    f.close()
-
-    for i in range(num_of_doses):
-        new_fid = chip_name + f".dose{i + 1}"
-        print("Making:", new_fid)
-        g = open(new_fid, "a")
-        for line in header:
-            print(line.rstrip())
-            g.write(line)
-        for line in list_of_lists[i]:
-            g.write(line)
-        g.close()
-    print()
-
-
 def main(args=None):
+    # args = args or sys.argv[1:]
     parser = argparse.ArgumentParser(
         description="Plot I24 chip results.",
-        formatter_class=argparse.RawTextHelpFormatter,
-        epilog=__doc__[__doc__.find("Additional") :].strip(),
+        epilog="Additionally, any option can be passed in as optionname=value.",
         usage=__doc__.strip().splitlines()[0][6:].strip(),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
         "file",
         metavar="FILE OR DIR",
-        nargs="?",
+        type=Path,
         help="Plot results from a hitfinding file",
+        nargs="?",
+    )
+    # These can be passed via option form but are legacy
+    parser.add_argument("--dir", "--file", help=argparse.SUPPRESS, type=Path)
+    parser.add_argument(
+        "--dosecolumns",
+        action="store_true",
+        help="Trigger (unsupported) dosecolumns mode",
     )
     parser.add_argument(
-        "options", metavar="OPTIONS", nargs="*", help="Options in form name=value"
+        "--noshow",
+        help="Don't show an interactive plot, only write to file",
+        action="store_true",
+    )
+
+    def _range(opt):
+        a, b = opt.split(",")
+        return float(a), float(b)
+
+    parser.add_argument(
+        "--binding", choices=["alpha", "shot"], help="Binding type, if appropriate"
     )
     parser.add_argument(
-        "--noshow", help="Don't show an interactive plot, only write to file"
+        "--column",
+        default=3,
+        help="Which column from the input file to read. Accepts numbers (for columnar .out files) or names (for new json-style files) [default: 3 or total_intensity])",
     )
+    parser.add_argument("--chiptype", default="1", help="The chip type", type=str)
+    parser.add_argument("--blocks", help="Limit to specified blocks e.g. A1,A2,A4")
+    parser.add_argument("--ms", default=8, type=int, help="Plotting marker size")
+    parser.add_argument("--cmap", default="terrain", help="Matplotlib cmap")
+    parser.add_argument(
+        "--dpi", default=200, type=int, help="Matplotlib save resolution"
+    )
+    parser.add_argument(
+        "--xlim", type=_range, default=(-1, 25), help="Matplotlib x range to plot"
+    )
+    parser.add_argument(
+        "--ylim", type=_range, default=(-1, 25), help="Matplotlib y range to plot"
+    )
+    parser.add_argument("--zlim", type=_range, help="Matplotlib z range to plot")
+    parser.add_argument(
+        "--alpha", default=1, type=float, help="Matplotlib marker plotting alpha"
+    )
+    parser.add_argument(
+        "--method",
+        default="new",
+        choices=["new", "old"],
+        help="""Plotting method. "old" plots markers for each well, which causes overlap and bad results when zooming. "new" causes images with a pixel per well to be drawn for each block.""",
+    )
+
+    # Pre-convert anything option=like to an --option=like
+    args = args or sys.argv[1:]
+    args = [f"--{x}" if ("=" in x and not x.startswith("-")) else x for x in args]
     options = parser.parse_args(args)
 
-    # Need to manually parse out opt=val to support legacy behaviour
-    allowed_keyword_list = [
-        "file",
-        "dir",
-        "dosecolumns",
-        "alpha",
-        "binding",
-        "blocks",
-        "chiptype",
-        "cmap",
-        "col",
-        "dpi",
-        "ms",
-        "xlim",
-        "ylim",
-        "zlim",
-        "method",
-    ]
-    # Since we want to allow file/a=b in any order for legacy compatibility, mix together
-    args = [options.file] + options.options
-    # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
-    arg_dict = {key: val for key, val in [x.split("=", 1) for x in args if "=" in x]}
-
-    show = True
-    if options.noshow:
-        show = False
-
-    # Handle any positional, including identifying duplications
-    positionals = [x for x in args if "=" not in x]
-    if len(positionals) > 1 or (
-        positionals and ("file" in arg_dict or "dir" in arg_dict)
-    ):
-        sys.exit("Error: Can only specify one file or directory location")
-    if positionals:
-        positional = positionals[0]
-        args.remove(positional)
-        if os.path.isfile(positional):
-            arg_dict["file"] = positional
-            args.append(f"file={positional}")
-        elif os.path.isdir(positional):
-            arg_dict["dir"] = positional
-            args.append(f"dir={positional}")
-        else:
-            sys.exit(f"Error: Could not identify {positional} as a file or dir")
-
-    # Validate all passed arguments are in our allowlist
-    for key in arg_dict.keys():
-        print(f"Keyword argument: {key}={arg_dict[key]}")
-        if key not in allowed_keyword_list:
-            sys.exit(
-                "Unknown arg in args: {}\n    Allowed keywords: {}".format(
-                    key, ", ".join(allowed_keyword_list)
-                )
-            )
-    if "file" in arg_dict and "dir" in arg_dict:
+    # Handle redundancy of file/file=/dir=
+    if options.file and options.dir:
         sys.exit("Error: Must specify file or dir, not both")
+    elif options.dir:
+        options.file = options.dir
 
-    if "file" in arg_dict:
-        method = "fromfile"
-    elif "dir" in arg_dict:
-        method = "fromdir"
-    elif "dosecolumns" in arg_dict:
-        method = "dosecolumns"
-    else:
-        sys.exit("Error: Cannot determine method. Please pass file= or dir=")
-
-    print(f"\n\nCalled PACMAN method = {method}\n")
-    print("\n\nDATA KEYWORDS\n", 30 * "-")
-    print("file=filename.out")
-    print("blocks=A1,A2,A3,A4 ...................,,,,.. Blocks MUST be in block order")
-    print("          Total number of images in file must not exceed 200*num_of_blocks")
-    print(30 * "-", "\n")
+    if not options.file.exists():
+        sys.exit(f"Error: {options.file} is not a file or a directory")
 
     plotter = None
 
-    if method == "fromfile":
-        x, y, z, plotter = run_fromfile_method(arg_dict["file"], **arg_dict)
-    elif method == "fromdir":
-        x, y, z = run_fromdir_method(*args)
-    elif method == "dosecolumns":
-        run_dosecolumns(*args)
-        print("Exiting")
-        return 0
+    if options.file.is_file():
+        x, y, z, plotter = run_fromfile_method(options.file, **vars(options))
     else:
-        raise SyntaxError("Unknown method")
+        x, y, z = run_fromdir_method(options.file)
 
-    plot(x, y, z, plotter, *args, show=show)
-    print("EOP")
+    plot(x, y, z, plotter, options)
 
 
 if __name__ == "__main__":

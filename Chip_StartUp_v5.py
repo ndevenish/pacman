@@ -267,8 +267,7 @@ def fiducials(chip_type):
     return fiducial_list
 
 
-def get_format(chip_type):
-    # type: (str) -> ChipFormat
+def get_format(chip_type: str) -> ChipFormat:
     """Get information about chip layout
 
     Args:
@@ -276,7 +275,6 @@ def get_format(chip_type):
 
     Returns: A description of the chip measurements
     """
-
     if chip_type == "0":
         w2w = 0.125
         b2b_horz = 0.825
@@ -308,7 +306,7 @@ def get_format(chip_type):
         b2b_vert = 1.325
         chip_format = (7, 7, 20, 20)
     else:
-        print("unknown chip type")
+        raise ValueError(f"Unknown chip type: {chip_type}")
     return ChipFormat(*(chip_format + (w2w, b2b_horz, b2b_vert)))
 
 
