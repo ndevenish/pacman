@@ -52,6 +52,8 @@ from Chip_StartUp_v5 import (
 
 def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
     # type (str, Union[str,int], Any, bool) -> Dict
+    """Read in hits from a hit file."""
+
     with open(filename) as f:
         raw_line_data = f.readlines()
 
