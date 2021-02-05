@@ -11,7 +11,6 @@ Methods:
     dir=/path/to/dir
 
 Additional options can be passed:
-    --noshow                Don't show an interactive plot, only write to file
     binding=[alpha|shot]    Binding type, if appropriate
     col=3                   Which column from the input file to read. Accepts
                             numbers (for columnar .out files) or names (for new
@@ -31,6 +30,7 @@ Additional options can be passed:
                             drawn for each block. [default: new]
 """
 
+import argparse
 import json
 import os
 import sys
@@ -487,15 +487,27 @@ def run_dosecolumns(*args):
 
 
 def main(args=None):
-    # Manual parsing because currently rather different from normal argparse
-    args = args or sys.argv[1:]
-    if not args:
-        print(__doc__.strip().splitlines()[0])
-        sys.exit(1)
-    if "-h" in args or "--help" in args:
-        print(__doc__.strip())
-        sys.exit()
+    parser = argparse.ArgumentParser(
+        description="Plot I24 chip results.",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=__doc__[__doc__.find("Additional") :].strip(),
+        usage=__doc__.strip().splitlines()[0][6:].strip(),
+    )
+    parser.add_argument(
+        "file",
+        metavar="FILE OR DIR",
+        nargs="?",
+        help="Plot results from a hitfinding file",
+    )
+    parser.add_argument(
+        "options", metavar="OPTIONS", nargs="*", help="Options in form name=value"
+    )
+    parser.add_argument(
+        "--noshow", help="Don't show an interactive plot, only write to file"
+    )
+    options = parser.parse_args(args)
 
+    # Need to manually parse out opt=val to support legacy behaviour
     allowed_keyword_list = [
         "file",
         "dir",
@@ -513,11 +525,13 @@ def main(args=None):
         "zlim",
         "method",
     ]
+    # Since we want to allow file/a=b in any order for legacy compatibility, mix together
+    args = [options.file] + options.options
     # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
     arg_dict = {key: val for key, val in [x.split("=", 1) for x in args if "=" in x]}
+
     show = True
-    if "--noshow" in args:
-        args.remove("--noshow")
+    if options.noshow:
         show = False
 
     # Handle any positional, including identifying duplications
