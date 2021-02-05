@@ -36,7 +36,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Tuple, Union
+from typing import Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -330,15 +330,6 @@ def run_fromfile_method(
     sys.exit("Unrecognised file extension: Expect .txt or .out")
 
 
-def _split_option(opt: Union[str, Tuple[float, float]]) -> Tuple[float, float]:
-    """Split and convert (if necessary) a "min,max" string"""
-    if isinstance(opt, str):
-        a, b = opt.split(",")
-        return float(a), float(b)
-    else:
-        return opt
-
-
 def plot(x, y, z, plotter, options):
     out_filename = (
         f"{options.file.stem}_{options.column}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
@@ -392,7 +383,6 @@ def plot(x, y, z, plotter, options):
 
 
 def main(args=None):
-    # args = args or sys.argv[1:]
     parser = argparse.ArgumentParser(
         description="Plot I24 chip results.",
         epilog="Additionally, any option can be passed in as optionname=value.",
@@ -409,20 +399,10 @@ def main(args=None):
     # These can be passed via option form but are legacy
     parser.add_argument("--dir", "--file", help=argparse.SUPPRESS, type=Path)
     parser.add_argument(
-        "--dosecolumns",
-        action="store_true",
-        help="Trigger (unsupported) dosecolumns mode",
-    )
-    parser.add_argument(
         "--noshow",
         help="Don't show an interactive plot, only write to file",
         action="store_true",
     )
-
-    def _range(opt):
-        a, b = opt.split(",")
-        return float(a), float(b)
-
     parser.add_argument(
         "--binding", choices=["alpha", "shot"], help="Binding type, if appropriate"
     )
@@ -438,6 +418,12 @@ def main(args=None):
     parser.add_argument(
         "--dpi", default=200, type=int, help="Matplotlib save resolution"
     )
+
+    def _range(opt):
+        """Parse an argument string as two separate floats"""
+        a, b = opt.split(",")
+        return float(a), float(b)
+
     parser.add_argument(
         "--xlim", type=_range, default=(-1, 25), help="Matplotlib x range to plot"
     )
@@ -455,7 +441,8 @@ def main(args=None):
         help="""Plotting method. "old" plots markers for each well, which causes overlap and bad results when zooming. "new" causes images with a pixel per well to be drawn for each block.""",
     )
 
-    # Pre-convert anything option=like to an --option=like
+    # Pre-convert anything option=like to an --option=like so that we
+    # remain (mostly) compatible with the old way of running pacman.
     args = args or sys.argv[1:]
     args = [f"--{x}" if ("=" in x and not x.startswith("-")) else x for x in args]
     options = parser.parse_args(args)
@@ -464,6 +451,9 @@ def main(args=None):
     if options.file and options.dir:
         sys.exit("Error: Must specify file or dir, not both")
     elif options.dir:
+        print(
+            "Warning: file= and dir= options are deprecated. Pass path directly instead."
+        )
         options.file = options.dir
 
     if not options.file.exists():
