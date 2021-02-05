@@ -62,11 +62,6 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
     # type (str, Union[str,int], Any, bool) -> Dict
     """Read in hits from a hit file."""
 
-    # Minor fudge: this is set like this so that we get a nice "default"
-    # in the automatic help string....
-    if column_choice == "3 or total_intensity":
-        column_choice = None
-
     with open(filename) as f:
         raw_line_data = f.readlines()
 
@@ -349,7 +344,7 @@ def run_fromfile_method(
 def plot(x, y, z, plotter, options):
     default_output = not options.output
     if not options.output:
-        options.output = f"{options.file.stem}_{options.column}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
+        options.output = f"{options.file.stem}_{options.column or 'total_intensity'}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
 
     fig = plt.figure(figsize=(10, 10), facecolor="0.75", edgecolor="w")
     ax1 = fig.add_subplot(111, aspect=1, facecolor="0.5")
@@ -468,6 +463,10 @@ def main(args=None):
         for x in args
     ]
     options = parser.parse_args(args)
+    # Minor fudge: this is set like this so that we get a nice "default"
+    # in the automatic help string....
+    if options.column == "3 or total_intensity":
+        options.column = None
 
     # Handle redundancy of file/file=/dir=
     if options.file and options.dir:
