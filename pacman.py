@@ -39,6 +39,7 @@ from typing import Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from Chip_StartUp_v5 import (
     address_to_index,
@@ -410,7 +411,14 @@ def plot(x, y, z, plotter, *args, show=True):
         plotter.draw(plt, cmap=cmap_choice)
 
     ax1.invert_yaxis()
-    plt.colorbar()
+
+    # Make the colorbar match the height of the image
+    divider = make_axes_locatable(ax1)
+    cax = divider.append_axes("right", size="5%", pad=0.07)
+    plt.colorbar(cax=cax)
+
+    plt.tight_layout()
+    # plt.colorbar()
     path = "."
     plt.savefig(
         path + out_fid,
