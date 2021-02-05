@@ -1,6 +1,6 @@
 #!/dls_sw/apps/python/anaconda/1.7.0/64/bin/python
 """
-usage: pacman [-h|--help] [FILE or DIR] [OPTIONS]
+usage: pacman [-h|--help] [--noshow] [FILE or DIR] [OPTIONS]
 
 Plot I24 chip results.
 
@@ -11,6 +11,7 @@ Methods:
     dir=/path/to/dir
 
 Additional options can be passed:
+    --noshow                Don't show an interactive plot, only write to file
     binding=[alpha|shot]    Binding type, if appropriate
     column=3                Which column from the input file to read. Accepts
                             numbers (for columnar .out files) or names (for new
@@ -351,7 +352,7 @@ def run_fromfile_method(
     sys.exit("Unrecognised file extension: Expect .txt or .out")
 
 
-def plot(x, y, z, plotter, *args):
+def plot(x, y, z, plotter, *args, show=True):
     alfa = 1
     col = 3
     mrksz = 8
@@ -458,7 +459,8 @@ def plot(x, y, z, plotter, *args):
     print("alpha=%s" % alfa)
     print(30 * "-", "\n\n")
     print("Imaged saved as: %s%s" % (path, out_fid))
-    plt.show()
+    if show:
+        plt.show()
 
 
 def run_dosecolumns(*args):
@@ -529,6 +531,11 @@ def main(args=None):
     ]
     # Convert the list of a=b c=d arguments to a dictionary by splitting on "="
     arg_dict = {key: val for key, val in [x.split("=", 1) for x in args if "=" in x]}
+    show = True
+    if "--noshow" in args:
+        args.remove("--noshow")
+        show = False
+
     # Handle any positional, including identifying duplications
     positionals = [x for x in args if "=" not in x]
     if len(positionals) > 1 or (
@@ -588,7 +595,7 @@ def main(args=None):
     else:
         raise SyntaxError("Unknown method")
 
-    plot(x, y, z, plotter, *args)
+    plot(x, y, z, plotter, *args, show=show)
     print("EOP")
 
 
