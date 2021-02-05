@@ -458,6 +458,9 @@ def main(args=None):
             "Warning: file= and dir= options are deprecated. Pass path directly instead."
         )
         options.file = options.dir
+    else:
+        parser.print_usage()
+        sys.exit("Error: Must specify path to process")
 
     if not options.file.exists():
         sys.exit(f"Error: {options.file} is not a file or a directory")
