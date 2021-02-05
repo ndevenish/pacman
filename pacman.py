@@ -146,7 +146,7 @@ def det_dist_file_scrape(fid, shot_order_addr_list):
     return hits_dict
 
 
-class ChipHitPlotter(object):
+class ChipHitPlotter:
     """
     Handles tracking and plotting of blocks.
 
@@ -154,8 +154,7 @@ class ChipHitPlotter(object):
     and there are absolutely no overlaps.
     """
 
-    def __init__(self, chip_type):
-        # type: (str) -> None
+    def __init__(self, chip_type: str) -> None:
         self.chip_type = chip_type
         self.metrics = get_format(chip_type)
 
@@ -173,14 +172,12 @@ class ChipHitPlotter(object):
             for row in range(self.metrics.blocks_y):
                 self.blocks[row, col][:5, :5] = 0.4e6
 
-    def set_from_dict(self, hits_addr_dict):
-        # type: (Dict[str, float]) -> None
+    def set_from_dict(self, hits_addr_dict: Dict[str, float]) -> None:
         """Fill out all the wells from an address dictionary"""
         for addr, val in hits_addr_dict.items():
             self.set_well(addr, val)
 
-    def set_well(self, addr, value):
-        # type: (str, float) -> None
+    def set_well(self, addr: str, value: float) -> None:
         """Set the value of a well.
 
         Args:
@@ -227,7 +224,7 @@ class ChipHitPlotter(object):
                         vmin=vmin,
                         vmax=vmax,
                         origin="lower",
-                        **kwargs
+                        **kwargs,
                     )
                 )
         return image_artists
@@ -281,7 +278,7 @@ def run_fromdir_method(*args):
             x, y, z = make_plot_arrays(hits_dict, chip_type="1")
             return x, y, z
         else:
-            sys.exit("Error: {} is not a valid path".format(path))
+            sys.exit(f"Error: {path} is not a valid path")
     else:
         raise SyntaxError("Unknown directory\n\n\n")
         return 0
@@ -305,7 +302,7 @@ def run_fromfile_method(
         addr_list = get_shot_order(chiptype)
         bound = False
 
-    print("Length of address list:%s\n" % len(addr_list))
+    print(f"Length of address list:{len(addr_list)}\n")
     new_addr_list = []
     if len(blocks) > 0:
         for addr in addr_list:
@@ -375,11 +372,7 @@ def plot(x, y, z, plotter, *args, show=True):
     if raw_fid == "":
         raw_fid = fid.split("/")[-2]
 
-    out_fid = "%s_%s_%smap.png" % (
-        raw_fid.split(".")[0],
-        col,
-        time.strftime("%Y%m%d_%H%M%S"),
-    )
+    out_fid = f"{raw_fid.split('.')[0]}_{col}_{time.strftime('%Y%m%d_%H%M%S')}map.png"
     fig = plt.figure(figsize=(10, 10), facecolor="0.75", edgecolor="w")
     ax1 = fig.add_subplot(111, aspect=1, facecolor="0.5")
     fig.subplots_adjust(left=0.03, right=0.97, bottom=0.03, top=0.97)
@@ -428,16 +421,16 @@ def plot(x, y, z, plotter, *args, show=True):
         transparent=True,
     )
     print("\n\nPLOTTING KEYWORDS\n", 30 * "-")
-    print("col=%s" % col)
-    print("ms=%s" % mrksz)
-    print("cmap=%s" % cmap_choice)
-    print("dpi=%s" % pixels)
-    print("xlim=%s,%s" % (xlim_min, xlim_max))
-    print("ylim=%s,%s" % (ylim_min, ylim_max))
-    print("zlim=%s,%s" % (zlim_min, zlim_max))
-    print("alpha=%s" % alfa)
+    print(f"col={col}")
+    print(f"ms={mrksz}")
+    print(f"cmap={cmap_choice}")
+    print(f"dpi={pixels}")
+    print(f"xlim={xlim_min},{xlim_max}")
+    print(f"ylim={ylim_min},{ylim_max}")
+    print(f"zlim={zlim_min},{zlim_max}")
+    print(f"alpha={alfa}")
     print(30 * "-", "\n\n")
-    print("Imaged saved as: %s%s" % (path, out_fid))
+    print(f"Imaged saved as: {path}{out_fid}")
     if show:
         plt.show()
 
@@ -455,7 +448,7 @@ def run_dosecolumns(*args):
         list_of_files = [fid for fid in fid_list if fid.startswith(chip_name)]
         for fid in list_of_files:
             print(fid)
-            f = open(path + fid, "r")
+            f = open(path + fid)
             for i, line in enumerate(f.readlines()[3:]):
                 # print i, i % num_of_doses
                 if line.startswith("-"):
@@ -464,12 +457,12 @@ def run_dosecolumns(*args):
                     list_of_lists[i % num_of_doses].append(line)
             f.close()
 
-    f = open(path + fid, "r")
+    f = open(path + fid)
     header = f.readlines()[:3]
     f.close()
 
     for i in range(num_of_doses):
-        new_fid = chip_name + ".dose%s" % (i + 1)
+        new_fid = chip_name + f".dose{i + 1}"
         print("Making:", new_fid)
         g = open(new_fid, "a")
         for line in header:
@@ -526,16 +519,16 @@ def main(args=None):
         args.remove(positional)
         if os.path.isfile(positional):
             arg_dict["file"] = positional
-            args.append("file={}".format(positional))
+            args.append(f"file={positional}")
         elif os.path.isdir(positional):
             arg_dict["dir"] = positional
-            args.append("dir={}".format(positional))
+            args.append(f"dir={positional}")
         else:
-            sys.exit("Error: Could not identify {} as a file or dir".format(positional))
+            sys.exit(f"Error: Could not identify {positional} as a file or dir")
 
     # Validate all passed arguments are in our allowlist
     for key in arg_dict.keys():
-        print("Keyword argument: %s=%s" % (key, arg_dict[key]))
+        print(f"Keyword argument: {key}={arg_dict[key]}")
         if key not in allowed_keyword_list:
             sys.exit(
                 "Unknown arg in args: {}\n    Allowed keywords: {}".format(
@@ -554,7 +547,7 @@ def main(args=None):
     else:
         sys.exit("Error: Cannot determine method. Please pass file= or dir=")
 
-    print("\n\nCalled PACMAN method = %s\n" % method)
+    print(f"\n\nCalled PACMAN method = {method}\n")
     print("\n\nDATA KEYWORDS\n", 30 * "-")
     print("file=filename.out")
     print("blocks=A1,A2,A3,A4 ...................,,,,.. Blocks MUST be in block order")
