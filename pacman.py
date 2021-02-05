@@ -1,33 +1,40 @@
 #!/usr/bin/env python3
 """
-usage: pacman [-h|--help] [--noshow] [FILE or DIR] [OPTIONS]
+usage: pacman.py [-h|--help] [-o OUTPUT] [OPTIONS] [FILE OR DIR]
 
 Plot I24 chip results.
 
-Methods:
-    FILE                        Plot results from a hitfinding file
-    DIR
-    file=/path/to/file.out      Alternate method to plot from file
-    dir=/path/to/dir
+positional arguments:
+  FILE OR DIR           Plot results from a hitfinding file (default: None)
 
-Additional options can be passed:
-    binding=[alpha|shot]    Binding type, if appropriate
-    col=3                   Which column from the input file to read. Accepts
-                            numbers (for columnar .out files) or names (for new
-                            json-style files) [default: 3 or total_intensity]
-    chiptype=1              The chip type. [default: 1]
-    blocks=                 Limit to specified blocks e.g. A1,A2,A4
-    ms=8                    Plotting marker size [default: 8]
-    cmap=terrain            Matplotlib cmap. [default: terrain]
-    dpi=200                 Matplotlib save resolution, in DPI [default: 200]
-    xlim=min,max            Matplotlib x range to plot
-    ylim=min,max            Matplotlib y range to plot
-    zlim=min,max            Matplotlib z range to plot
-    alpha=1                 Matplotlib marker plotting alpha [default: 1]
-    method=[new|old]        Plotting method. "old" plots markers for each well,
-                            which causes overlap and bad results when zooming.
-                            "new" causes images with a pixel per well to be
-                            drawn for each block. [default: new]
+optional arguments:
+  -h, --help            show this help message and exit
+  -o OUTPUT, --output OUTPUT
+                        The output filename to write plot to (default: None)
+  --show                Always show plot, even if specifying output filename.
+                        (default: False)
+  --binding {alpha,shot}
+                        Binding type, if appropriate (default: None)
+  --column COLUMN       Which column from the input file to read. Accepts
+                        numbers (for columnar .out files) or names (for new
+                        json-style files) [default: 3 or total_intensity])
+                        (default: 3)
+  --chiptype CHIPTYPE   The chip type (default: 1)
+  --blocks BLOCKS       Limit to specified blocks e.g. A1,A2,A4 (default:
+                        None)
+  --ms MS               Plotting marker size (default: 8)
+  --cmap CMAP           Matplotlib cmap (default: terrain)
+  --dpi DPI             Matplotlib save resolution (default: 200)
+  --xlim XLIM           Matplotlib x range to plot (default: (-1, 25))
+  --ylim YLIM           Matplotlib y range to plot (default: (-1, 25))
+  --zlim ZLIM           Matplotlib z range to plot (default: None)
+  --alpha ALPHA         Matplotlib marker plotting alpha (default: 1)
+  --method {new,old}    Plotting method. "old" plots markers for each well,
+                        which causes overlap and bad results when zooming.
+                        "new" causes images with a pixel per well to be drawn
+                        for each block. (default: new)
+
+For legacy compatibility, any option can be passed in as optionname=value
 """
 
 import argparse
@@ -387,7 +394,7 @@ def plot(x, y, z, plotter, options):
 def main(args=None):
     parser = argparse.ArgumentParser(
         description="Plot I24 chip results.",
-        epilog="Additionally, any option can be passed in as optionname=value.",
+        epilog="For legacy compatibility, any option can be passed in as optionname=value",
         usage=__doc__.strip().splitlines()[0][6:].strip(),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
@@ -398,7 +405,7 @@ def main(args=None):
         help="Plot results from a hitfinding file",
         nargs="?",
     )
-    parser.add_argument("-o", "--output", help="The output filename to write plot to.")
+    parser.add_argument("-o", "--output", help="The output filename to write plot to")
     # dir= and file= can be passed via option form but are deprecated
     parser.add_argument("--dir", "--file", help=argparse.SUPPRESS, type=Path)
     parser.add_argument(
