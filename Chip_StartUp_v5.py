@@ -453,7 +453,6 @@ def get_shot_order(chip_type):
                 count = 0
                 switch = 0
 
-    print(len(collect_list))
     return collect_list
 
 
