@@ -169,9 +169,11 @@ class ChipHitPlotter:
             ),
             -1.0,
         )
-        for col in range(self.metrics.blocks_x):
-            for row in range(self.metrics.blocks_y):
-                self.blocks[row, col][:5, :5] = 0.4e6
+
+        # Vestigial code to colour the top of each block
+        # for col in range(self.metrics.blocks_x):
+        #     for row in range(self.metrics.blocks_y):
+        #         self.blocks[row, col][:5, :5] = 0.4e6
 
     def set_from_dict(self, hits_addr_dict: Dict[str, float]) -> None:
         """Fill out all the wells from an address dictionary"""
