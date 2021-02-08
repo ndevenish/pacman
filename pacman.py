@@ -69,6 +69,9 @@ def hits_scrape(filename, column_choice, shot_order_addr_list, bound=False):
     try:
         column_choice = column_choice or "total_intensity"
         data = [json.loads(line) for line in raw_line_data]
+        if not data:
+            sys.exit(f"Error: {filename} appears to be empty")
+
         # Correct any case sensitivity issues
         column_choice = [
             x for x in data[0].keys() if x.lower() == column_choice.lower()
