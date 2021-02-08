@@ -427,6 +427,7 @@ def main(args=None):
     )
     parser.add_argument(
         "--column",
+        "-c",
         default="total_intensity",
         help="Which column from the input file to read. Accepts numbers (for columnar .out files) or names (for new json-style files) [default: 3 or total_intensity])",
     )
